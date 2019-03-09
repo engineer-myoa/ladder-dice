@@ -66,7 +66,7 @@ def datePretty(timestamp):
     currDateTime = datetime.datetime.fromtimestamp(timestamp)
     return currDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
-def generateRandomDice(users, requestedTime):
+def generateRandomDice(users, requestedTime, needGraph):
 
 
     seed = generateSeedFromTime(requestedTime)
@@ -75,10 +75,12 @@ def generateRandomDice(users, requestedTime):
     mappingData(userDict, accScoreResult) # throw final score
     resultString = "{0} 결과\n\n".format(datePretty(requestedTime)) + pprint(userDict)
 
-    # drawGraph(resultString)
+    infoGraphics = None
+    if needGraph:
+        infoGraphics = drawGraph(resultString)
 
-    print(resultString)
+    return resultString, infoGraphics
 
 
-requestedTime = time.time()
-generateRandomDice(['a','b','c','d','e','f'], requestedTime)
+# requestedTime = time.time()
+# generateRandomDice(['a','b','c','d','e','f'], requestedTime)
