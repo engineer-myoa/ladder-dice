@@ -62,7 +62,7 @@ def addIgnoreUser():
 
     with open(APP_CONFIG, "w") as f:
         config.write(f)
-    return "Ignored below user(s)!\n {0}".format(commandArguments)
+    return "[DICE add ignore result]\n" + "Requester: {0}\n".format(body["user_name"]) + "Ignored below user(s)!\n {0}".format(commandArguments)
 
 def diceRoutine(members, parsedArguments):
     # grant random score
@@ -78,7 +78,7 @@ def diceRoutine(members, parsedArguments):
         name = userInfo["user"]["real_name"]  # TODO: decide to which one use between name(id) and realName(username)
         userDict[name] = userDict.pop(key)  # change key name
 
-    resultString = "{0} 결과\n\n".format(dice.datePretty(requestedTime)) + dice.pprint(userDict)
+    resultString = "Timestamp: {0}\n\n".format(dice.datePretty(requestedTime)) + dice.pprint(userDict)
 
     return resultString
 
@@ -99,7 +99,8 @@ def callback():
         key, val = argument
         parsedArguments[key] = int(val)
 
-    resultString = diceRoutine(members, parsedArguments)
+    resultString = "[DICE result]\n" + "Requester: {0}\n".format(body["user_name"]) + diceRoutine(members, parsedArguments)
+
     # TODO Graph
     return resultString
 
