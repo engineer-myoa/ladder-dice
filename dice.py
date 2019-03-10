@@ -5,16 +5,20 @@ import sys
 import datetime, time
 
 RANDOM_ITERATE_COUNT = 5
-MAX_SCORE = 200000
+MAX_SCORE = 100000
 MAX_USER = 50
+PARAMETER_KEYS = ["-m", "-c" "-v"]
+
 
 def parseUser(users):
     return dict(zip(users, [0] * len(users)))
 
 
-def grantScore(size, masterSeed):
+def grantScore(size, iterateCount, masterSeed):
+
     random.seed(masterSeed)
-    generatedNewSeedList = [ random.randrange(sys.maxsize) for x in range(RANDOM_ITERATE_COUNT) ]
+    iterateCount = iterateCount if iterateCount != None else RANDOM_ITERATE_COUNT
+    generatedNewSeedList = [ random.randrange(sys.maxsize) for x in range(iterateCount) ]
 
     adaptiveMaxScore = MAX_SCORE * 1 if size <= MAX_USER else np.floor(np.sqrt(size))
 
@@ -38,12 +42,25 @@ def mappingData(users: dict, result):
 
     return users
 
-def pprint(dictionary: dict):
+def dictToSortedList(dictionary: dict, limit=None):
+    size = len(dictionary)
+
+    limit = limit if limit != None else size # check is limit null
+    limit = limit if limit < size else size # check is limit not over than dict's length
+
+    return sorted( [[key, val[-1]] for key, val in dictionary.items()], key= lambda val: val[1], reverse=True)[:limit]
+
+def pprint(dictionary, limit=None):
     resultString = ""
-    totalScoreList = [ [key, val[-1]] for key, val in dictionary.items() ]
+
+    totalScoreList = dictToSortedList(dictionary)
     sumScore = int(np.sum(eachUserScore[-1] for eachUserScore in totalScoreList)) # get last elements and summation all
-    totalScoreList = sorted(totalScoreList, key= lambda val: val[1], reverse=True) # sorting based on score
-    for k, v in totalScoreList:
+
+    size = len(totalScoreList)
+    limit = limit if limit != None else size # check is limit null
+    limit = limit if limit < size else size # check is limit not over than dict's length
+
+    for k, v in totalScoreList[:limit]:
         resultString += "{0}: {1} pts ({2:2.2f}%)".format(k, v, v/sumScore*100) + "\n"
 
     return resultString.rstrip()
@@ -66,21 +83,21 @@ def datePretty(timestamp):
     currDateTime = datetime.datetime.fromtimestamp(timestamp)
     return currDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
-def generateRandomDice(users, requestedTime, needGraph):
+def generateRandomDice(users, iterateCount, requestedTime, needGraph):
+
 
 
     seed = generateSeedFromTime(requestedTime)
     userDict = parseUser(users)
-    accScoreResult = grantScore(len(userDict), seed)
+    accScoreResult = grantScore(len(userDict), iterateCount, seed)
     mappingData(userDict, accScoreResult) # throw final score
-    resultString = "{0} 결과\n\n".format(datePretty(requestedTime)) + pprint(userDict)
 
     infoGraphics = None
     if needGraph:
-        infoGraphics = drawGraph(resultString)
+        infoGraphics = drawGraph(userDict)
 
-    return resultString, infoGraphics
+    return userDict, infoGraphics
 
-
-# requestedTime = time.time()
-# generateRandomDice(['a','b','c','d','e','f'], requestedTime)
+if __name__ == "__main__":
+    requestedTime = time.time()
+    generateRandomDice(['a','b','c','d','e','f'], requestedTime)

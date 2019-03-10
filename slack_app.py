@@ -1,41 +1,117 @@
 import dice
 import time
+from configparser import ConfigParser
+import slacker
+from flask import Flask, request
+
+IGNORED_USER = []
+APP_CONFIG = "app.config"
+app = Flask(__name__)
 
 
-from slacker import Slacker
+def configInit():
+    config = ConfigParser()
+    config.add_section("TOKEN")
+    config.add_section("IGNORED_USER")
+    config.add_section("SERVER")
+    config["TOKEN"]["slack.api.token"] = ""
+    config["TOKEN"]["slack.bot.token"] = ""
+    config["IGNORED_USER"]["app.user.ignored"] = ""
+    config["SERVER"]["app.channels.allowed"] = ""
 
-SLACK_API_TOKEN = "Jrs9vr6e0EP2ywNnCcZMZEhB"
-BOT_TOKEN = "xoxb-48712680069-572865732823-bJkLx3fRcrqhv1ZVBVD4lT0j"
-slack = Slacker(BOT_TOKEN)
+    with open(APP_CONFIG, "w") as f:
+        config.write(f)
 
-# Send a message to #general channel
+def excludeAllBot():
+    pass
 
-# Get users list
-response = slack.users.list()
-if response.body == False:
-    exit(-1)
-members = response.body['members']
+def getChannelMembers(channelName):
+    conversationInfo = slack.conversations.members(channelName)
+    print(conversationInfo)
+    if conversationInfo.body["ok"] != True:
+        return False
 
-def extractNameFromMembers(members):
-    names = []
-    for member in members:
-        if member["real_name"] in ["**Bot", "**bot"]:
+    members = conversationInfo.body["members"]
+    return members
+
+def filteredMembers(members: list):
+    idx = 0
+    while idx < len(members):
+        if members[idx] in IGNORED_USER:
+            members.pop(idx)
             continue
-        names.append( member["real_name"] )
-    return names
 
+        idx += 1
 
-names = extractNameFromMembers(members)
-result, infoGraphics = dice.generateRandomDice(names, time.time(), False)
+    return members
 
-slack.chat.post_message('#s-mirror-notice', result)
+@app.route("/add_ignore", methods=["POST"])
+def addIgnoreUser():
+    body = request.values
+    commandArguments = body["text"].split(" ")
+    print(commandArguments)
 
+    getAllUserList = slack.users.list().body["members"]
+    userDict = {}
+    for userInfo in getAllUserList:
+        userDict[userInfo["name"]] = userInfo["id"]
 
-# Upload a file
-# slack.files.upload('hello.txt')
+    for userId in commandArguments:
+        userId = userId.lstrip("@")
+        config["IGNORED_USER"]["app.user.ignored"] = config["IGNORED_USER"]["app.user.ignored"] + userDict[userId] + ";"
 
-# Advanced: Use `request.Session` for connection pooling (reuse)
-# from requests.sessions import Session
-# with Session() as session:
-#     slack = Slacker(token, session=session)
-#     slack.chat.post_message('#s-mirror-notice', 'All these requests')
+    with open(APP_CONFIG, "w") as f:
+        config.write(f)
+    return "Ignored below user(s)!\n {0}".format(commandArguments)
+
+def diceRoutine(members, parsedArguments):
+    # grant random score
+    requestedTime = time.time()
+    userDict, infoGraphics = dice.generateRandomDice(members, parsedArguments.get("-c"), requestedTime, False)
+    sortedScoreList = dice.dictToSortedList(userDict,
+                                            parsedArguments.get("-m"))  # If there is no -m option, will passed None.
+
+    # Mapping high Scored member_id to real_name
+    for key, val in sortedScoreList:
+        userInfo = slack.users.info(key).body
+
+        name = userInfo["user"]["real_name"]  # TODO: decide to which one use between name(id) and realName(username)
+        userDict[name] = userDict.pop(key)  # change key name
+
+    resultString = "{0} 결과\n\n".format(dice.datePretty(requestedTime)) + dice.pprint(userDict)
+
+    return resultString
+
+@app.route("/dice", methods=["POST"])
+def callback():
+    body = request.values
+    commandArguments = body["text"].split(" ")
+
+    members = filteredMembers( getChannelMembers(body["channel_id"]) )
+
+    # arguments parsing
+    parsedArguments = {}
+    for argument in commandArguments:
+        argument = argument.split("=")
+        if len(argument) != 2:
+            continue
+
+        key, val = argument
+        parsedArguments[key] = int(val)
+
+    resultString = diceRoutine(members, parsedArguments)
+    # TODO Graph
+    return resultString
+
+if __name__ == "__main__":
+    config = ConfigParser()
+    if len(config.read(APP_CONFIG)) == 0:
+        configInit()
+        print("[INFO] Please fill app.config first :)")
+        exit(-1)
+
+    SLACK_BOT_TOKEN = config["TOKEN"]["slack.bot.token"]
+    IGNORED_USER = config["IGNORED_USER"]["app.user.ignored"].split(";")
+    slack = slacker.Slacker(SLACK_BOT_TOKEN)
+
+    app.run(host="192.168.1.10", port=9999)
