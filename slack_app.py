@@ -67,8 +67,8 @@ def addIgnoreUser():
 def diceRoutine(members, parsedArguments):
     # grant random score
     requestedTime = time.time()
-    userDict, infoGraphics = dice.generateRandomDice(members, parsedArguments.get("-c"), requestedTime, False)
-    sortedScoreList = dice.dictToSortedList(userDict,
+    userDict, infoGraphics = dice.generateRandomDice(members, parsedArguments.get("-c"), requestedTime)
+    sortedScoreList = dice.__dictToSortedList__(userDict,
                                             parsedArguments.get("-m"))  # If there is no -m option, will passed None.
 
     # Mapping high Scored member_id to real_name
@@ -78,7 +78,7 @@ def diceRoutine(members, parsedArguments):
         name = userInfo["user"]["real_name"]  # TODO: decide to which one use between name(id) and realName(username)
         userDict[name] = userDict.pop(key)  # change key name
 
-    resultString = "Timestamp: {0}\n\n".format(dice.datePretty(requestedTime)) + dice.pprint(userDict)
+    resultString = dice.prettyPrint(userDict, requestedTime, None)
 
     return resultString
 
@@ -115,4 +115,4 @@ if __name__ == "__main__":
     IGNORED_USER = config["IGNORED_USER"]["app.user.ignored"].split(";")
     slack = slacker.Slacker(SLACK_BOT_TOKEN)
 
-    app.run(host="192.168.1.10", port=9999)
+    app.run(host="10.70.19.186", port=41410)

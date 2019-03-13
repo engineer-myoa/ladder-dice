@@ -1,5 +1,7 @@
 app.config
 
+### VSCode ###
+.vscode
 # Created by https://www.gitignore.io/api/python,intellij
 # Edit at https://www.gitignore.io/?templates=python,intellij
 
