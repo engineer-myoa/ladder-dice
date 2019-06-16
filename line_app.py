@@ -214,9 +214,7 @@ def handle_message(event):
     resultString = __commandParser__(event)
 
     if resultString == None:
-        #        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="NO"))
-        return
-        pass
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="NO"))
     else:
         line_bot_api.reply_message(
             event.reply_token,
@@ -234,10 +232,7 @@ if __name__ == "__main__":
     Session = sessionmaker(bind=model.dataSource.engine)
     session = Session()
 
-    print( testParser("/dice") )
-
     ssl_context = ("fullchain.pem", "privkey.pem")
-    # app.run(host="localhost", port="41410", ssl_context=ssl_context)
     app.run(host="192.168.0.100", port="41410", ssl_context=ssl_context)
 
 
