@@ -1,6 +1,10 @@
 app.config
 dice.db
 .test
+fullchain.pem
+privkey.pem
+nohup.out
+.__pycache__
 
 ### VSCode ###
 .vscode
