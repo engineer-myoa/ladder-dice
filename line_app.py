@@ -28,16 +28,15 @@ CONFIG_FILE_PATH = "app.config"
 
 app = Flask(__name__)
 
-
 config = ConfigParser()
+config.read(CONFIG_FILE_PATH)
 
-IMAGE_URL_PREFIX = "mock"
-CHANNEL_ACCESS_TOKEN = "mock"
-CHANNEL_SECRET = "mock"
+CHANNEL_ACCESS_TOKEN = config["TOKEN"]["line.channel.secret"]
+CHANNEL_SECRET = config["TOKEN"]["line.access.token"]
+IMAGE_URL_PREFIX = config["SERVER"]["image.url.prefix"]
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
-
 
 @app.route("/")
 def index():
@@ -222,11 +221,6 @@ def handle_message(event):
 
 
 if __name__ == "__main__":
-    config.read(CONFIG_FILE_PATH)
-
-    CHANNEL_ACCESS_TOKEN = config["TOKEN"]["line.channel.secret"]
-    CHANNEL_SECRET = config["TOKEN"]["line.access.token"]
-    IMAGE_URL_PREFIX = config["SERVER"]["image.url.prefix"]
 
     conn = model.dataSource.engine.connect()
     Session = sessionmaker(bind=model.dataSource.engine)
