@@ -1,7 +1,7 @@
 import datetime
 import json
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 import dice
 import time
@@ -31,9 +31,10 @@ app = Flask(__name__)
 config = ConfigParser()
 config.read(CONFIG_FILE_PATH)
 
-CHANNEL_ACCESS_TOKEN = config["TOKEN"]["line.channel.secret"]
-CHANNEL_SECRET = config["TOKEN"]["line.access.token"]
+CHANNEL_ACCESS_TOKEN = config["TOKEN"]["line.access.token"]
+CHANNEL_SECRET = config["TOKEN"]["line.channel.secret"]
 IMAGE_URL_PREFIX = config["SERVER"]["image.url.prefix"]
+ADMIN_USER_ID = config["USER"]["line.admin.userId"]
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
@@ -134,6 +135,9 @@ def commandDice(event, command):
 
     requestedTime = time.time()
     diceMembers = session.query(model.DiceMember).all()
+    if len(diceMembers) <= 0:
+        return "[{0}]\nThere is no member. Please add member first.".format(datetime.datetime.now())
+
     diceMemberNames = list(map(lambda x: x.name, diceMembers))
 
     import random
@@ -159,53 +163,39 @@ def commandDice(event, command):
 def __commandParser__(event):
     print(event)
     command = event.message.text.strip().split(" ")
+    userId = event.source.user_id
 
     if command[0] == "/dice":
         command = [] if len(command) == 0 else command[1:]
         resultString = "[DICE result]\n" + commandDice(event, command)
         return resultString
-    elif command[0] == "/add":
+    elif command[0] == "/add" and userId == ADMIN_USER_ID:
         username = command[1]
+
+        if session.query(model.DiceMember).filter_by(name=username).count() > 0:
+            return "[{0}]\n {1} already exist".format(datetime.datetime.now(), username)
+
         newMember = model.DiceMember(username)
         session.add(newMember)
         session.commit()
-        return "[{0}] Member add Successfully : {1}".format(newMember.reg_dtime, newMember.name)
-    elif command[0] == "/delete":
+        return "[{0}]\n Member add Successfully : {1}".format(newMember.reg_dtime, newMember.name)
+    elif command[0] == "/delete" and userId == ADMIN_USER_ID:
         username = command[1]
-        session.query(model.DiceMember).filter(username=username).delete()
-        session.commit()
-        return "[{0}] {1} deleted successfully".format(datetime.datetime.now(), username)
+        if session.query(model.DiceMember).filter_by(name=username).delete() > 0:
+            session.commit()
+            return "[{0}]\n {1} deleted successfully".format(datetime.datetime.now(), username)
+
+        return "[{0}]\n {1} not exist".format(datetime.datetime.now(), username)
+
+    elif command[0] == "/members":
+        diceMembers = session.query(model.DiceMember).all()
+        return "[{0}]\n Current DICE Members : {1}"\
+            .format(datetime.datetime.now(), str(list(map(lambda x: x.name, diceMembers))))
 
     elif command[0] == "/status":
         return "NOT IMPLEMENTS"
 
-
-def testParser(data: str):
-    print(data)
-    command = data.strip().split(" ")
-
-    if command[0] == "/dice":
-        command = [] if len(command) == 0 else command[1:]
-        resultString = "[DICE result]\n" + commandDice(None, command)
-        return resultString
-
-    elif command[0] == "/add":
-        username = command[1]
-        newMember = model.DiceMember(username)
-        session.add(newMember)
-        session.commit()
-        return "[{0}] {1}, add successfully".format(newMember.reg_dtime, newMember.name)
-
-    elif command[0] == "/delete":
-        username = command[1]
-        session.query(model.DiceMember).filter_by(name=username).delete()
-        session.commit()
-        return "[{0}] {1} deleted successfully".format(datetime.datetime.now(), username)
-
-
-    elif command[0] == "/status":
-        return "NOT IMPLEMENTS"
-
+    return None
 
 # TextMessage에 대해서 Handle하는 Handler
 @handler.add(MessageEvent, message=TextMessage)
@@ -213,20 +203,23 @@ def handle_message(event):
     resultString = __commandParser__(event)
 
     if resultString == None:
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="NO"))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Not allowed"))
     else:
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=resultString))
 
+@app.teardown_request
+def remove_session(ex=None):
+    session.remove()
 
 if __name__ == "__main__":
 
     conn = model.dataSource.engine.connect()
-    Session = sessionmaker(bind=model.dataSource.engine)
-    session = Session()
+    session = scoped_session(sessionmaker(bind=model.dataSource.engine))
+    # session = Session()
 
     ssl_context = ("fullchain.pem", "privkey.pem")
-    app.run(host="192.168.0.100", port="41410", ssl_context=ssl_context)
+    app.run(host="192.168.1.10", port="41410", ssl_context=ssl_context)
 
 

@@ -1,9 +1,12 @@
+# file excluded
 app.config
 dice.db
-.test
 fullchain.pem
 privkey.pem
 nohup.out
+
+# folder excluded
+.test
 .__pycache__
 
 ### VSCode ###
