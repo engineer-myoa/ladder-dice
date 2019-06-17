@@ -170,15 +170,22 @@ def __commandParser__(event):
         resultString = "[DICE result]\n" + commandDice(event, command)
         return resultString
     elif command[0] == "/add" and userId == ADMIN_USER_ID:
-        username = command[1]
+        addcompletedMembers = []
+        alreadyExistMembers = []
+        for username in command[1:]:
 
-        if session.query(model.DiceMember).filter_by(name=username).count() > 0:
-            return "[{0}]\n {1} already exist".format(datetime.datetime.now(), username)
+            if session.query(model.DiceMember).filter_by(name=username).count() > 0:
+                alreadyExistMembers.append(username)
 
-        newMember = model.DiceMember(username)
-        session.add(newMember)
-        session.commit()
-        return "[{0}]\n Member add Successfully : {1}".format(newMember.reg_dtime, newMember.name)
+            newMember = model.DiceMember(username)
+            session.add(newMember)
+            session.commit()
+            addcompletedMembers.append(username)
+
+        return "[{0}]\n".format(datetime.datetime.now()) \
+        + "Member add Successfully : {0}\n\n".format(addcompletedMembers) \
+        + "Member already exist : {0}".format(alreadyExistMembers)
+
     elif command[0] == "/delete" and userId == ADMIN_USER_ID:
         username = command[1]
         if session.query(model.DiceMember).filter_by(name=username).delete() > 0:
