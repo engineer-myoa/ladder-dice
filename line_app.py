@@ -165,6 +165,9 @@ def __commandParser__(event):
     command = event.message.text.strip().split(" ")
     userId = event.source.user_id
 
+    if command[0][0] != "/":
+        return None
+
     if command[0] == "/dice":
         command = [] if len(command) == 0 else command[1:]
         resultString = "[DICE result]\n" + commandDice(event, command)
@@ -176,6 +179,7 @@ def __commandParser__(event):
 
             if session.query(model.DiceMember).filter_by(name=username).count() > 0:
                 alreadyExistMembers.append(username)
+                continue
 
             newMember = model.DiceMember(username)
             session.add(newMember)
@@ -210,7 +214,8 @@ def handle_message(event):
     resultString = __commandParser__(event)
 
     if resultString == None:
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Not allowed"))
+        # line_bot_api.reply_message(event.reply_token, TextSendMessage(text=""))
+        return
     else:
         line_bot_api.reply_message(
             event.reply_token,
@@ -227,6 +232,6 @@ if __name__ == "__main__":
     # session = Session()
 
     ssl_context = ("fullchain.pem", "privkey.pem")
-    app.run(host="192.168.1.10", port="41410", ssl_context=ssl_context)
+    app.run(host="192.168.0.100", port="41410", ssl_context=ssl_context)
 
 
